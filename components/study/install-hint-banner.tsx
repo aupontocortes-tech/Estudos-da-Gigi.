@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { X, Monitor, Smartphone } from "lucide-react"
-import { cn } from "@/lib/utils"
 
 const STORAGE_KEY = "estudos-gigi-install-hint-dismissed"
 
@@ -19,38 +18,41 @@ function detectPlatform(): Platform {
   return "desktop"
 }
 
-const hints: {
-  id: Platform
-  title: string
-  subtitle: string
-  steps: string
-  Icon: typeof Smartphone
-}[] = [
+const hints: Record<
+  Platform,
   {
-    id: "android",
-    title: "Android",
-    subtitle: "Chrome ou navegador recomendado",
+    headline: string
+    title: string
+    subtitle: string
+    steps: string
+    Icon: typeof Smartphone
+  }
+> = {
+  android: {
+    headline: "Instalar no Android",
+    title: "Celular ou tablet Android",
+    subtitle: "Chrome ou navegador recomendado pelo fabricante",
     steps:
-      "Toque no menu ⋮ → **Instalar app** ou **Adicionar à tela inicial**. Confirme para criar o atalho na área de trabalho do celular.",
+      "Com o site aberto aqui, toque no menu **⋮** → **Instalar app** ou **Adicionar à tela inicial** e confirme. O ícone do Estudos da Gigi fica na área de trabalho do celular, como um app.",
     Icon: Smartphone,
   },
-  {
-    id: "ios",
+  ios: {
+    headline: "Instalar no iPhone ou iPad",
     title: "iPhone e iPad",
-    subtitle: "Use o Safari",
+    subtitle: "Só funciona no Safari — não no Chrome nem no app do WhatsApp",
     steps:
-      "Toque em **Compartilhar** (□↑) → **Adicionar à Tela de Início** → **Adicionar**. O app abre como atalho em tela cheia.",
+      "Se você abriu por outro lugar, **cole o link deste site na barra do Safari** ou use **Abrir no Safari**. Depois toque em **Compartilhar** (□↑) → **Adicionar à Tela de Início** → **Adicionar**.",
     Icon: Smartphone,
   },
-  {
-    id: "desktop",
-    title: "Computador (PC)",
+  desktop: {
+    headline: "Instalar no computador",
+    title: "Windows, Mac ou Linux",
     subtitle: "Chrome, Edge ou Brave",
     steps:
-      "Procure o ícone de **instalar** (⊕ ou monitor com seta) na barra de endereços, ou menu **⋮** → **Instalar Estudos da Gigi** / **Aplicativo** → **Instalar**.",
+      "Na barra de endereços, use o ícone de **instalar** (⊕ ou monitor com seta), ou o menu **⋮** → **Instalar Estudos da Gigi** / **Instalar como aplicativo** → **Instalar**.",
     Icon: Monitor,
   },
-]
+}
 
 function formatSteps(text: string) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g)
@@ -84,6 +86,9 @@ export function InstallHintBanner() {
 
   if (!ready || dismissed) return null
 
+  const hint = hints[platform]
+  const { headline, title, subtitle, steps, Icon } = hint
+
   return (
     <section
       className="mx-4 mb-3 rounded-2xl border border-border bg-card p-4 card-shadow"
@@ -91,9 +96,9 @@ export function InstallHintBanner() {
     >
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
-          <h2 className="text-sm font-bold text-foreground">Instale o app no seu dispositivo</h2>
+          <h2 className="text-sm font-bold text-foreground">{headline}</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Mesmo site — vira atalho como aplicativo. Escolha o seu sistema:
+            É o mesmo site no navegador — depois de instalar, abre como aplicativo.
           </p>
         </div>
         <button
@@ -106,43 +111,21 @@ export function InstallHintBanner() {
         </button>
       </div>
 
-      <ul className="space-y-2.5">
-        {hints.map(({ id, title, subtitle, steps, Icon }) => {
-          const isHere = platform === id
-          return (
-            <li
-              key={id}
-              className={cn(
-                "flex gap-3 rounded-xl border border-border/80 bg-background/60 p-3 transition-colors",
-                isHere && "border-primary/50 bg-primary/5 ring-1 ring-primary/20",
-              )}
-            >
-              <div
-                className={cn(
-                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary",
-                  isHere && "bg-primary/15 text-primary",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
-                  <span className="text-sm font-semibold text-foreground">{title}</span>
-                  {isHere && (
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-primary">
-                      seu dispositivo
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-muted-foreground">{subtitle}</p>
-                <p className="mt-1.5 text-xs leading-relaxed text-foreground/90">
-                  {formatSteps(steps)}
-                </p>
-              </div>
-            </li>
-          )
-        })}
-      </ul>
+      <div className="flex gap-3 rounded-xl border border-primary/40 bg-primary/5 p-3 ring-1 ring-primary/20">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
+            <span className="text-sm font-semibold text-foreground">{title}</span>
+            <span className="text-[10px] font-bold uppercase tracking-wide text-primary">
+              este dispositivo
+            </span>
+          </div>
+          <p className="text-[11px] text-muted-foreground">{subtitle}</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-foreground/90">{formatSteps(steps)}</p>
+        </div>
+      </div>
     </section>
   )
 }
