@@ -1,0 +1,17 @@
+{
+  "name": "Estudos da Gigi",
+  "short_name": "Estudos Gigi",
+  "description": "Timer de estudos, estatisticas e anotacoes",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF8FC",
+  "theme_color": "#FFF8FC",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

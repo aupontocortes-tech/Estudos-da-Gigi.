@@ -1,0 +1,165 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* Estudos da Gigi - Tema Fofo Rosa/Lilas */
+:root {
+  --background: #FFF8FC;
+  --foreground: #4A3550;
+  --card: #FFFFFF;
+  --card-foreground: #4A3550;
+  --popover: #FFFFFF;
+  --popover-foreground: #4A3550;
+  --primary: #F48FB1;
+  --primary-foreground: #FFFFFF;
+  --secondary: #FFF0F5;
+  --secondary-foreground: #4A3550;
+  --muted: #FFF0F5;
+  --muted-foreground: #B08BBF;
+  --accent: #CE93D8;
+  --accent-foreground: #FFFFFF;
+  --destructive: #E57373;
+  --destructive-foreground: #FFFFFF;
+  --border: #F8D7E8;
+  --input: #FFF0F5;
+  --ring: #F48FB1;
+  --chart-1: #F48FB1;
+  --chart-2: #CE93D8;
+  --chart-3: #80DEEA;
+  --chart-4: #FFB74D;
+  --chart-5: #AED581;
+  --radius: 1.5rem;
+  --sidebar: #FFF0F5;
+  --sidebar-foreground: #4A3550;
+  --sidebar-primary: #F48FB1;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #CE93D8;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #F8D7E8;
+  --sidebar-ring: #F48FB1;
+}
+
+.dark {
+  --background: #FFF8FC;
+  --foreground: #4A3550;
+  --card: #FFFFFF;
+  --card-foreground: #4A3550;
+  --popover: #FFFFFF;
+  --popover-foreground: #4A3550;
+  --primary: #F48FB1;
+  --primary-foreground: #FFFFFF;
+  --secondary: #FFF0F5;
+  --secondary-foreground: #4A3550;
+  --muted: #FFF0F5;
+  --muted-foreground: #B08BBF;
+  --accent: #CE93D8;
+  --accent-foreground: #FFFFFF;
+  --destructive: #E57373;
+  --destructive-foreground: #FFFFFF;
+  --border: #F8D7E8;
+  --input: #FFF0F5;
+  --ring: #F48FB1;
+  --chart-1: #F48FB1;
+  --chart-2: #CE93D8;
+  --chart-3: #80DEEA;
+  --chart-4: #FFB74D;
+  --chart-5: #AED581;
+  --sidebar: #FFF0F5;
+  --sidebar-foreground: #4A3550;
+  --sidebar-primary: #F48FB1;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #CE93D8;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #F8D7E8;
+  --sidebar-ring: #F48FB1;
+}
+
+@theme inline {
+  --font-sans: 'Nunito', 'Nunito Fallback', sans-serif;
+  --font-mono: 'Quicksand', 'Quicksand Fallback', sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 8px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    letter-spacing: 0.01em;
+  }
+}
+
+/* Hide scrollbar for tabs */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Soft shadow for cards */
+.card-shadow {
+  box-shadow: 0 4px 20px rgba(244, 143, 177, 0.15);
+}
+
+/* Gradient button */
+.btn-gradient {
+  background: linear-gradient(135deg, #F48FB1 0%, #CE93D8 100%);
+}
+
+/* Pulse animation for play button */
+@keyframes pulse-pink {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(244, 143, 177, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 15px rgba(244, 143, 177, 0);
+  }
+}
+
+.animate-pulse-pink {
+  animation: pulse-pink 2s ease-in-out infinite;
+}
+
+/* Timer ring gradient */
+.timer-ring-gradient {
+  stroke: url(#timerGradient);
+}
