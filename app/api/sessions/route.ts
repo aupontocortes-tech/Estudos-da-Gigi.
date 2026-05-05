@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import db, { type DbSession, type DbSubject } from '@/lib/db'
 
+export const runtime = 'nodejs'
+
 export async function GET() {
   try {
     const sessions = db.prepare('SELECT * FROM sessions ORDER BY date DESC, start_time DESC').all() as DbSession[]

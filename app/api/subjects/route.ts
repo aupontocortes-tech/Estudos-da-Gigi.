@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import db, { type DbSubject } from '@/lib/db'
 import { SUBJECT_COLORS } from '@/lib/types'
 
+export const runtime = 'nodejs'
+
 export async function GET() {
   try {
     const subjects = db.prepare('SELECT * FROM subjects ORDER BY name').all() as DbSubject[]

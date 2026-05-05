@@ -2,17 +2,35 @@ import Database from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
 
-// Garante que o diretório data existe
-const dataDir = path.join(process.cwd(), 'data')
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true })
+/**
+ * Na Vercel (serverless), só `/tmp` é gravável. Em disco local usamos `./data`.
+ */
+function getDataDir(): string {
+  if (process.env.VERCEL === '1') {
+    return path.join('/tmp', 'estudos-da-gigi')
+  }
+  return path.join(process.cwd(), 'data')
+}
+
+const dataDir = getDataDir()
+try {
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true })
+  }
+} catch (err) {
+  console.error('[db] Falha ao criar pasta de dados:', dataDir, err)
+  throw err
 }
 
 const dbPath = path.join(dataDir, 'estudos.db')
 const db = new Database(dbPath)
 
-// Ativa foreign keys
-db.pragma('journal_mode = WAL')
+// Na Vercel, WAL gera ficheiros extra; DELETE evita problemas em FS efémero
+if (process.env.VERCEL === '1') {
+  db.pragma('journal_mode = DELETE')
+} else {
+  db.pragma('journal_mode = WAL')
+}
 db.pragma('foreign_keys = ON')
 
 // Cria as tabelas se nao existirem

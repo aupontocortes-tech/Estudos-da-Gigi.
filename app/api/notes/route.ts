@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import db, { type DbNote, type DbSubject } from '@/lib/db'
 
+export const runtime = 'nodejs'
+
 export async function GET() {
   try {
     const notes = db.prepare('SELECT * FROM notes ORDER BY updated_at DESC').all() as DbNote[]
