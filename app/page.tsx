@@ -24,7 +24,15 @@ const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
 export default function StudyApp() {
   const [activeTab, setActiveTab] = useState<Tab>('timer')
   const [activeSubjectId, setActiveSubjectId] = useState<string>('')
+  const [deployCommit, setDeployCommit] = useState<string | null>(null)
   const { data, isLoaded, isLoading, addSubject, deleteSubject, addSession, addNote, updateNote, deleteNote } = useStudyData()
+
+  useEffect(() => {
+    fetch('/api/version')
+      .then((r) => r.json())
+      .then((body: { sha?: string | null }) => setDeployCommit(body.sha ?? null))
+      .catch(() => setDeployCommit(null))
+  }, [])
 
   useEffect(() => {
     if (data.subjects.length > 0 && !activeSubjectId) {
@@ -137,10 +145,15 @@ export default function StudyApp() {
         </div>
 
         {/* Footer */}
-        <footer className="p-4 text-center">
+        <footer className="p-4 text-center space-y-1">
           <p className="text-xs text-muted-foreground font-medium">
             ✿ {data.subjects.length} materias • {data.sessions.length} sessoes ✿
           </p>
+          {deployCommit && (
+            <p className="text-[10px] text-muted-foreground/70 font-mono" title="Commit deployado (Vercel)">
+              deploy: {deployCommit}
+            </p>
+          )}
         </footer>
       </div>
     </main>
