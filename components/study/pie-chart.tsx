@@ -157,6 +157,16 @@ export function PieChart({ subjects, statsRefreshKey = 0 }: PieChartProps) {
     ].join(' ')
   }
 
+  const labelRadius = (115 + 65) / 2
+
+  function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
+    const rad = (angleDeg * Math.PI) / 180
+    return {
+      x: cx + r * Math.cos(rad),
+      y: cy + r * Math.sin(rad),
+    }
+  }
+
   return (
     <div className="flex flex-col items-center gap-5 p-4">
       <div className="w-full max-w-sm space-y-3 md:max-w-2xl">
@@ -242,6 +252,31 @@ export function PieChart({ subjects, statsRefreshKey = 0 }: PieChartProps) {
                 className="fill-muted/30"
               />
             )}
+            {totalMinutos > 0 &&
+              slices.map((slice) => {
+                const span = slice.endAngle - slice.startAngle
+                const mid = (slice.startAngle + slice.endAngle) / 2
+                const { x, y } = polarToCartesian(150, 150, labelRadius, mid)
+                const fontSize =
+                  span < 18 ? 8 : span < 30 ? 9 : span < 55 ? 10 : span < 100 ? 11 : 12
+                return (
+                  <text
+                    key={`pct-${slice.materia}-${slice.startAngle}`}
+                    x={x}
+                    y={y}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="white"
+                    stroke="rgba(0,0,0,0.22)"
+                    strokeWidth={0.6}
+                    paintOrder="stroke fill"
+                    className="pointer-events-none font-bold select-none"
+                    style={{ fontSize, fontFamily: 'var(--font-mono)' }}
+                  >
+                    {`${slice.percentage.toFixed(1)}%`}
+                  </text>
+                )
+              })}
             <circle cx="150" cy="150" r="55" fill="white" />
             <text
               x="150"
