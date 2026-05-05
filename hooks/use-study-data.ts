@@ -9,6 +9,24 @@ const defaultData: StudyData = {
   notes: [],
 }
 
+async function fetchJsonWithTimeout<T>(url: string, timeoutMs = 10000): Promise<T | null> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const res = await fetch(url, { signal: controller.signal })
+    if (!res.ok) {
+      return null
+    }
+    return (await res.json()) as T
+  } catch (error) {
+    console.error(`Error fetching ${url}:`, error)
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export function useStudyData() {
   const [data, setData] = useState<StudyData>(defaultData)
   const [isLoaded, setIsLoaded] = useState(false)
@@ -18,25 +36,16 @@ export function useStudyData() {
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true)
-      const [subjectsRes, sessionsRes, notesRes] = await Promise.all([
-        fetch('/api/subjects'),
-        fetch('/api/sessions'),
-        fetch('/api/notes'),
-      ])
-
-      if (!subjectsRes.ok || !sessionsRes.ok || !notesRes.ok) {
-        throw new Error('Failed to fetch data')
-      }
-
       const [subjects, sessions, notes] = await Promise.all([
-        subjectsRes.json(),
-        sessionsRes.json(),
-        notesRes.json(),
+        fetchJsonWithTimeout<Subject[]>('/api/subjects'),
+        fetchJsonWithTimeout<StudySession[]>('/api/sessions'),
+        fetchJsonWithTimeout<Note[]>('/api/notes'),
       ])
-
-      setData({ subjects, sessions, notes })
-    } catch (error) {
-      console.error('Error loading data:', error)
+      setData({
+        subjects: subjects ?? [],
+        sessions: sessions ?? [],
+        notes: notes ?? [],
+      })
     } finally {
       setIsLoading(false)
       setIsLoaded(true)
