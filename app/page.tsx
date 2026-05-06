@@ -25,7 +25,17 @@ export default function StudyApp() {
   const [activeTab, setActiveTab] = useState<Tab>('timer')
   const [activeSubjectId, setActiveSubjectId] = useState<string>('')
   const [deployCommit, setDeployCommit] = useState<string | null>(null)
-  const { data, isLoaded, isLoading, addSubject, deleteSubject, addSession, addNote, updateNote, deleteNote } = useStudyData()
+  const {
+    data,
+    isLoaded,
+    isLoading,
+    addSubject,
+    deleteSubject,
+    addSession,
+    addNote,
+    updateNote,
+    deleteNote,
+  } = useStudyData()
 
   useEffect(() => {
     fetch('/api/version')

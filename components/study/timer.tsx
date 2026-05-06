@@ -1,10 +1,13 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
 import { Play, Pause, RotateCcw, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { Subject } from '@/lib/types'
+
+/** Valor interno do Select quando não há matérias (evita quebrar o Radix). */
+const NO_SUBJECTS_SELECT_VALUE = '__eg_no_subjects__'
 
 interface TimerProps {
   subjects: Subject[]
@@ -41,57 +44,73 @@ export function Timer({ subjects, onSessionComplete }: TimerProps) {
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const startTimeRef = useRef<number>(0)
 
-  const selectedSubject = subjects.find(s => s.id === selectedSubjectId)
+  /** ID da matéria em uso: nunca fica vazio só no estado enquanto o Select já mostra uma opção (bug que travava Play). */
+  const effectiveSubjectId = useMemo(() => {
+    if (subjects.length === 0) return ''
+    if (selectedSubjectId && subjects.some((s) => s.id === selectedSubjectId)) {
+      return selectedSubjectId
+    }
+    return subjects[0].id
+  }, [subjects, selectedSubjectId])
 
-  useEffect(() => {
-    if (subjects.length > 0 && !selectedSubjectId) {
+  const selectedSubject = subjects.find((s) => s.id === effectiveSubjectId)
+
+  useLayoutEffect(() => {
+    if (subjects.length === 0) {
+      setSelectedSubjectId('')
+      return
+    }
+    if (!selectedSubjectId || !subjects.some((s) => s.id === selectedSubjectId)) {
       setSelectedSubjectId(subjects[0].id)
     }
   }, [subjects, selectedSubjectId])
 
   useEffect(() => {
-    if (isRunning) {
-      startTimeRef.current = Date.now() - time * 1000
-      intervalRef.current = setInterval(() => {
-        setTime(Math.floor((Date.now() - startTimeRef.current) / 1000))
-      }, 1000)
-    } else {
+    if (!isRunning) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+      return
+    }
+
+    startTimeRef.current = Date.now() - time * 1000
+    intervalRef.current = setInterval(() => {
+      setTime(Math.floor((Date.now() - startTimeRef.current) / 1000))
+    }, 1000)
+
+    return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
         intervalRef.current = null
       }
     }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
-    }
+    // time não entra nas deps: a cada tick reexecutar o efeito zeraria o intervalo.
   }, [isRunning])
 
   const handleStart = useCallback(() => {
-    if (!selectedSubjectId) return
+    if (!effectiveSubjectId) return
     setShowSaved(false)
     setIsRunning(true)
-  }, [selectedSubjectId])
+  }, [effectiveSubjectId])
 
   const handlePause = useCallback(() => {
     setIsRunning(false)
   }, [])
 
   const handleSaveSession = useCallback(async () => {
-    if (time === 0 || !selectedSubjectId || isSaving) return
-    
+    if (time === 0 || !effectiveSubjectId || isSaving) return
+
     setIsSaving(true)
     try {
-      await onSessionComplete(selectedSubjectId, time)
+      await onSessionComplete(effectiveSubjectId, time)
       setShowSaved(true)
       setTime(0)
       setTimeout(() => setShowSaved(false), 3000)
     } finally {
       setIsSaving(false)
     }
-  }, [time, selectedSubjectId, onSessionComplete, isSaving])
+  }, [time, effectiveSubjectId, onSessionComplete, isSaving])
 
   const handleReset = useCallback(() => {
     setIsRunning(false)
@@ -113,30 +132,39 @@ export function Timer({ subjects, onSessionComplete }: TimerProps) {
   const progress = Math.min(time / maxTime, 1)
   const strokeDashoffset = circumference * (1 - progress)
 
+  const subjectSelectValue =
+    subjects.length > 0 ? effectiveSubjectId : NO_SUBJECTS_SELECT_VALUE
+
   return (
     <div className="flex w-full flex-col items-center gap-5 p-4">
       {/* Subject selector */}
       <div className="w-full max-w-sm md:max-w-xl">
-        <Select 
-          value={selectedSubjectId} 
+        <Select
+          value={subjectSelectValue}
           onValueChange={setSelectedSubjectId}
-          disabled={isRunning}
+          disabled={isRunning || subjects.length === 0}
         >
           <SelectTrigger className="w-full! bg-card border-border rounded-2xl card-shadow">
             <SelectValue placeholder="Selecione uma materia" />
           </SelectTrigger>
           <SelectContent className="rounded-2xl">
-            {subjects.map(subject => (
-              <SelectItem key={subject.id} value={subject.id} className="rounded-xl">
-                <div className="flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: subject.color }}
-                  />
-                  {subject.name}
-                </div>
+            {subjects.length === 0 ? (
+              <SelectItem value={NO_SUBJECTS_SELECT_VALUE} disabled className="rounded-xl">
+                <span className="text-muted-foreground">Selecione uma materia</span>
               </SelectItem>
-            ))}
+            ) : (
+              subjects.map((subject) => (
+                <SelectItem key={subject.id} value={subject.id} className="rounded-xl">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: subject.color }}
+                    />
+                    {subject.name}
+                  </div>
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
       </div>
@@ -209,8 +237,8 @@ export function Timer({ subjects, onSessionComplete }: TimerProps) {
         
         <Button
           onClick={handleToggle}
-          disabled={!selectedSubjectId}
-          className={`w-20 h-20 rounded-full text-lg font-semibold btn-gradient text-white ${!isRunning && selectedSubjectId ? 'animate-pulse-pink' : ''}`}
+          disabled={!effectiveSubjectId}
+          className={`w-20 h-20 rounded-full text-lg font-semibold btn-gradient text-white ${!isRunning && effectiveSubjectId ? 'animate-pulse-pink' : ''}`}
         >
           {isRunning ? (
             <Pause className="w-8 h-8" />

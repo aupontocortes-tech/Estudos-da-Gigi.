@@ -48,18 +48,42 @@ async function idbSet(data: Uint8Array): Promise<void> {
 }
 
 export function persistBrowserDb(db: SqlJsDatabase) {
-  try {
-    void idbSet(db.export())
-  } catch (e) {
+  void idbSet(db.export()).catch((e) => {
     console.error('[browser-sqlite] Falha ao gravar no IndexedDB:', e)
-  }
+  })
 }
+
+/** Versão alinhada ao package.json — usada no CDN de fallback (Chrome / PWA / 404 local). */
+const SQLJS_PKG_VERSION = '1.14.1'
 
 async function initSqlModule() {
   const initSqlJs = (await import('sql.js')).default
-  return initSqlJs({
-    locateFile: (file) => `/${file}`,
-  })
+  const bases = [
+    `${typeof window !== 'undefined' ? window.location.origin : ''}/`,
+    `https://cdn.jsdelivr.net/npm/sql.js@${SQLJS_PKG_VERSION}/dist/`,
+  ]
+  let last: unknown
+  for (const base of bases) {
+    try {
+      return await initSqlJs({
+        locateFile: (file) => {
+          // Alguns builds pedem sql-wasm-browser.wasm; mapeamos para o arquivo publicado.
+          if (file === 'sql-wasm-browser.wasm') return `${base}sql-wasm.wasm`
+          return `${base}${file}`
+        },
+      })
+    } catch (e) {
+      console.warn('[browser-sqlite] Falha ao carregar WASM em', base, e)
+      last = e
+    }
+  }
+  throw (
+    last instanceof Error
+      ? last
+      : new Error(
+          'Não foi possível carregar o SQLite (WebAssembly). Tente recarregar ou verifique a conexão.',
+        )
+  )
 }
 
 const SCHEMA = `
@@ -146,11 +170,13 @@ function backfillEstudosFromSessions(db: SqlJsDatabase) {
 }
 
 async function tryBootstrapFromServer(db: SqlJsDatabase) {
+  const ac = new AbortController()
+  const t = window.setTimeout(() => ac.abort(), 5000)
   try {
     const [subjectsRes, sessionsRes, notesRes] = await Promise.all([
-      fetch('/api/subjects'),
-      fetch('/api/sessions'),
-      fetch('/api/notes'),
+      fetch('/api/subjects', { signal: ac.signal }),
+      fetch('/api/sessions', { signal: ac.signal }),
+      fetch('/api/notes', { signal: ac.signal }),
     ])
     if (!subjectsRes.ok) return
     const subjects = (await subjectsRes.json()) as Subject[]
@@ -192,7 +218,9 @@ async function tryBootstrapFromServer(db: SqlJsDatabase) {
     }
     backfillEstudosFromSessions(db)
   } catch {
-    /* sem rede ou API vazia */
+    /* sem rede, timeout ou API vazia */
+  } finally {
+    window.clearTimeout(t)
   }
 }
 
@@ -204,7 +232,13 @@ export async function getBrowserDb(): Promise<SqlJsDatabase> {
   if (!initPromise) {
     initPromise = (async () => {
       const SQL = await initSqlModule()
-      const existing = await idbGet()
+      let existing: Uint8Array | null = null
+      try {
+        existing = await idbGet()
+      } catch (e) {
+        // Alguns navegadores/perfis bloqueiam IndexedDB; nesse caso o app segue com DB em memória.
+        console.warn('[browser-sqlite] IndexedDB indisponível, usando banco em memória:', e)
+      }
       const db =
         existing && existing.byteLength > 0 ? new SQL.Database(existing) : new SQL.Database()
       runSchema(db)

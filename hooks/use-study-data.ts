@@ -22,14 +22,21 @@ export function useStudyData() {
   const [data, setData] = useState<StudyData>(defaultData)
   const [isLoaded, setIsLoaded] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true)
+      setLoadError(null)
       const loaded = await browserLoadStudyData()
       setData(loaded)
     } catch (e) {
       console.error('[useStudyData] Falha ao carregar SQLite local:', e)
+      const msg =
+        e instanceof Error
+          ? e.message
+          : 'Não foi possível abrir o banco no aparelho. Verifique conexão e espaço.'
+      setLoadError(msg)
       setData(defaultData)
     } finally {
       setIsLoading(false)
@@ -133,6 +140,7 @@ export function useStudyData() {
     data,
     isLoaded,
     isLoading,
+    loadError,
     addSubject,
     deleteSubject,
     addSession,

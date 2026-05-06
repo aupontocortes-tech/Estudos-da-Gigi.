@@ -25,6 +25,8 @@ import {
 } from '@/components/ui/dialog'
 import type { Note, Subject } from '@/lib/types'
 
+const NO_SUBJECTS_SELECT_VALUE = '__eg_no_subjects__'
+
 interface NotesProps {
   notes: Note[]
   subjects: Subject[]
@@ -50,7 +52,12 @@ export function Notes({ notes, subjects, activeSubjectId, onAdd, onUpdate, onDel
   }
 
   const handleCreate = () => {
-    if (newTitle.trim() && newSubjectId) {
+    if (
+      newTitle.trim() &&
+      newSubjectId &&
+      newSubjectId !== NO_SUBJECTS_SELECT_VALUE &&
+      subjects.length > 0
+    ) {
       onAdd(newSubjectId, newTitle.trim(), newContent.trim())
       setNewTitle('')
       setNewContent('')
@@ -124,22 +131,36 @@ export function Notes({ notes, subjects, activeSubjectId, onAdd, onUpdate, onDel
             </Button>
           </div>
           
-          <Select value={newSubjectId} onValueChange={setNewSubjectId}>
+          <Select
+            value={
+              subjects.length > 0
+                ? (newSubjectId || subjects[0].id)
+                : NO_SUBJECTS_SELECT_VALUE
+            }
+            onValueChange={setNewSubjectId}
+            disabled={subjects.length === 0}
+          >
             <SelectTrigger className="bg-input rounded-xl border-border">
               <SelectValue placeholder="Materia" />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
-              {subjects.map(subject => (
-                <SelectItem key={subject.id} value={subject.id} className="rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: subject.color }}
-                    />
-                    {subject.name}
-                  </div>
+              {subjects.length === 0 ? (
+                <SelectItem value={NO_SUBJECTS_SELECT_VALUE} disabled className="rounded-lg">
+                  <span className="text-muted-foreground">Materia</span>
                 </SelectItem>
-              ))}
+              ) : (
+                subjects.map((subject) => (
+                  <SelectItem key={subject.id} value={subject.id} className="rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: subject.color }}
+                      />
+                      {subject.name}
+                    </div>
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
           
@@ -160,7 +181,12 @@ export function Notes({ notes, subjects, activeSubjectId, onAdd, onUpdate, onDel
           
           <Button
             onClick={handleCreate}
-            disabled={!newTitle.trim() || !newSubjectId}
+            disabled={
+              !newTitle.trim() ||
+              !newSubjectId ||
+              subjects.length === 0 ||
+              newSubjectId === NO_SUBJECTS_SELECT_VALUE
+            }
             className="w-full btn-gradient text-white rounded-xl h-11 font-semibold"
           >
             <Check className="w-4 h-4 mr-2" />
