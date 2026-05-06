@@ -16,6 +16,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import type { Note, Subject } from '@/lib/types'
 
 interface NotesProps {
@@ -30,6 +37,7 @@ interface NotesProps {
 export function Notes({ notes, subjects, activeSubjectId, onAdd, onUpdate, onDelete }: NotesProps) {
   const [isCreating, setIsCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [readingNote, setReadingNote] = useState<Note | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [newTitle, setNewTitle] = useState('')
   const [newContent, setNewContent] = useState('')
@@ -51,6 +59,7 @@ export function Notes({ notes, subjects, activeSubjectId, onAdd, onUpdate, onDel
   }
 
   const handleStartEdit = (note: Note) => {
+    setReadingNote(null)
     setEditingId(note.id)
     setEditTitle(note.title)
     setEditContent(note.content)
@@ -220,7 +229,16 @@ export function Notes({ notes, subjects, activeSubjectId, onAdd, onUpdate, onDel
             return (
               <div
                 key={note.id}
-                className="p-4 rounded-2xl bg-card card-shadow border border-border"
+                role="button"
+                tabIndex={0}
+                onClick={() => setReadingNote(note)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setReadingNote(note)
+                  }
+                }}
+                className="p-4 rounded-2xl bg-card card-shadow border border-border cursor-pointer text-left transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 style={{ borderLeftColor: color, borderLeftWidth: 4 }}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -235,30 +253,43 @@ export function Notes({ notes, subjects, activeSubjectId, onAdd, onUpdate, onDel
                       </span>
                     </div>
                     <h3 className="font-bold text-foreground truncate">{note.title}</h3>
-                    {note.content && (
-                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                    {note.content ? (
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-3">
                         {note.content}
                       </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground/70 mt-1 italic">Sem texto — toque para abrir</p>
                     )}
                     <p className="text-xs text-muted-foreground mt-2 font-medium">
                       {formatDate(note.updatedAt)}
                     </p>
+                    <p className="text-[10px] text-primary/80 font-semibold mt-1.5">Toque para ler tudo ✦</p>
                   </div>
-                  
+
                   <div className="flex gap-1 flex-shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleStartEdit(note)}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleStartEdit(note)
+                      }}
                       className="w-9 h-9 rounded-full hover:bg-primary/20"
+                      aria-label="Editar anotação"
                     >
                       <Pencil className="w-4 h-4 text-muted-foreground" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setDeleteId(note.id)}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDeleteId(note.id)
+                      }}
                       className="w-9 h-9 rounded-full hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
+                      aria-label="Excluir anotação"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -269,6 +300,52 @@ export function Notes({ notes, subjects, activeSubjectId, onAdd, onUpdate, onDel
           })}
         </div>
       )}
+
+      {/* Leitura da nota */}
+      <Dialog open={!!readingNote} onOpenChange={(open) => !open && setReadingNote(null)}>
+        <DialogContent className="max-h-[min(520px,85vh)] overflow-y-auto rounded-2xl sm:max-w-md">
+          {readingNote && (
+            <>
+              <DialogHeader className="text-left">
+                <div className="flex items-center gap-2 mb-1">
+                  <div
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: getSubjectColor(readingNote.subjectId) }}
+                  />
+                  <span className="text-xs text-muted-foreground font-medium">{readingNote.subjectName}</span>
+                </div>
+                <DialogTitle className="text-xl font-bold leading-tight pr-8">{readingNote.title}</DialogTitle>
+                <p className="text-xs text-muted-foreground font-medium pt-1">
+                  {formatDate(readingNote.updatedAt)}
+                </p>
+              </DialogHeader>
+              <div className="rounded-xl border border-border bg-secondary/30 px-3.5 py-3 text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words min-h-[4rem]">
+                {readingNote.content?.trim()
+                  ? readingNote.content
+                  : 'Esta anotação não tem texto — só o título.'}
+              </div>
+              <DialogFooter className="flex-col gap-2 sm:flex-col">
+                <Button
+                  type="button"
+                  className="w-full btn-gradient text-white rounded-xl font-semibold"
+                  onClick={() => handleStartEdit(readingNote)}
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Editar
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full rounded-xl border-border"
+                  onClick={() => setReadingNote(null)}
+                >
+                  Fechar
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
