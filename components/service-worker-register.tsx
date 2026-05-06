@@ -2,24 +2,34 @@
 
 import { useEffect } from 'react'
 
-/** Registra o SW em produção (HTTPS). Sem isso, Android/Chrome não oferecem “Instalar app”. */
+function shouldRegisterServiceWorker(): boolean {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return false
+  const { hostname } = window.location
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+  if (!window.isSecureContext && !isLocal) return false
+  // Produção (Vercel) ou localhost: necessário para PWA / beforeinstallprompt no Chrome
+  return process.env.NODE_ENV === 'production' || isLocal
+}
+
+/** Registra /sw.js — obrigatório para o Chrome Android tratar o site como PWA instalável. */
 export function ServiceWorkerRegister() {
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'production') return
-    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
+    if (!shouldRegisterServiceWorker()) return
 
     const register = async () => {
       try {
-        await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        await reg.update()
+        await navigator.serviceWorker.ready
       } catch (e) {
         console.warn('[PWA] Falha ao registrar service worker:', e)
       }
     }
 
     if (document.readyState === 'complete') {
-      register()
+      void register()
     } else {
-      window.addEventListener('load', register, { once: true })
+      window.addEventListener('load', () => void register(), { once: true })
     }
   }, [])
 

@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { X, Monitor, Smartphone } from "lucide-react"
+import { X, Monitor, Smartphone, Download } from "lucide-react"
+import { usePwaInstallPrompt } from "@/hooks/use-pwa-install-prompt"
 
 const STORAGE_KEY = "estudos-gigi-install-hint-dismissed"
 
@@ -18,6 +19,13 @@ function detectPlatform(): Platform {
   return "desktop"
 }
 
+function isStandaloneDisplay(): boolean {
+  if (typeof window === "undefined") return false
+  if (window.matchMedia("(display-mode: standalone)").matches) return true
+  const nav = window.navigator as Navigator & { standalone?: boolean }
+  return nav.standalone === true
+}
+
 const hints: Record<
   Platform,
   {
@@ -31,17 +39,17 @@ const hints: Record<
   android: {
     headline: "Instalar no Android",
     title: "Celular ou tablet Android",
-    subtitle: "Chrome ou navegador recomendado pelo fabricante",
+    subtitle: "Use o Google Chrome (cole o link na barra de endereço)",
     steps:
-      "Com o site aberto aqui, toque no menu **⋮** → **Instalar app** ou **Adicionar à tela inicial** e confirme. O ícone do Estudos da Gigi fica na área de trabalho do celular, como um app.",
+      "Se aparecer o botão **Instalar aplicativo** abaixo, toque nele e confirme. Se não aparecer: menu **⋮** → **Instalar app** ou **Adicionar à tela inicial**.",
     Icon: Smartphone,
   },
   ios: {
     headline: "Instalar no iPhone ou iPad",
     title: "iPhone e iPad",
-    subtitle: "Só funciona no Safari — não no Chrome nem no app do WhatsApp",
+    subtitle: "Só no Safari — não no Chrome embutido nem dentro do WhatsApp",
     steps:
-      "Se você abriu por outro lugar, **cole o link deste site na barra do Safari** ou use **Abrir no Safari**. Depois toque em **Compartilhar** (□↑) → **Adicionar à Tela de Início** → **Adicionar**.",
+      "**Cole o link** deste site na barra do **Safari** (ou **Abrir no Safari**). Depois: **Compartilhar** (□↑) → **Adicionar à Tela de Início** → **Adicionar**.",
     Icon: Smartphone,
   },
   desktop: {
@@ -49,7 +57,7 @@ const hints: Record<
     title: "Windows, Mac ou Linux",
     subtitle: "Chrome, Edge ou Brave",
     steps:
-      "Na barra de endereços, use o ícone de **instalar** (⊕ ou monitor com seta), ou o menu **⋮** → **Instalar Estudos da Gigi** / **Instalar como aplicativo** → **Instalar**.",
+      "Use o botão **Instalar** quando aparecer, ou o ícone na barra de endereços, ou menu **⋮** → **Instalar como aplicativo**.",
     Icon: Monitor,
   },
 }
@@ -72,9 +80,12 @@ export function InstallHintBanner() {
   const [ready, setReady] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const [platform, setPlatform] = useState<Platform>("desktop")
+  const [standalone, setStandalone] = useState(false)
+  const { canPromptInstall, promptInstall, installed } = usePwaInstallPrompt()
 
   useEffect(() => {
     setPlatform(detectPlatform())
+    setStandalone(isStandaloneDisplay())
     setDismissed(localStorage.getItem(STORAGE_KEY) === "1")
     setReady(true)
   }, [])
@@ -84,10 +95,11 @@ export function InstallHintBanner() {
     setDismissed(true)
   }
 
-  if (!ready || dismissed) return null
+  if (!ready || dismissed || standalone || installed) return null
 
   const hint = hints[platform]
   const { headline, title, subtitle, steps, Icon } = hint
+  const showInstallButton = platform !== "ios" && canPromptInstall
 
   return (
     <section
@@ -110,6 +122,17 @@ export function InstallHintBanner() {
           <X className="h-4 w-4" />
         </button>
       </div>
+
+      {showInstallButton && (
+        <button
+          type="button"
+          onClick={() => void promptInstall()}
+          className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-md transition hover:opacity-95 active:scale-[0.99]"
+        >
+          <Download className="h-4 w-4 shrink-0" aria-hidden />
+          Instalar aplicativo
+        </button>
+      )}
 
       <div className="flex gap-3 rounded-xl border border-primary/40 bg-primary/5 p-3 ring-1 ring-primary/20">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
