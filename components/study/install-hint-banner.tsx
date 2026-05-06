@@ -1,9 +1,18 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { X, Monitor, Smartphone, Download } from "lucide-react"
+import { X, Monitor, Smartphone, Download, Link2, Check } from "lucide-react"
 import { usePwaInstallPrompt } from "@/hooks/use-pwa-install-prompt"
 import { isPrivateLanHost, normalizeHostname } from "@/lib/pwa-env"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
 
 const STORAGE_KEY = "estudos-gigi-install-hint-dismissed"
 
@@ -31,6 +40,7 @@ const hints: Record<
   Platform,
   {
     headline: string
+    badge: string
     title: string
     subtitle: string
     steps: string
@@ -38,27 +48,30 @@ const hints: Record<
   }
 > = {
   android: {
-    headline: "Instalar no Android",
-    title: "Celular ou tablet Android",
-    subtitle: "Use o Google Chrome (cole o link na barra de endereço)",
+    headline: "Baixar o aplicativo",
+    badge: "Android",
+    title: "Google Chrome no celular ou tablet",
+    subtitle: "Cole o link na barra de endereços do Chrome e use o botão abaixo quando aparecer.",
     steps:
-      "Se aparecer o botão **Instalar aplicativo** abaixo, toque nele e confirme. Se não aparecer: menu **⋮** → **Instalar app** ou **Adicionar à tela inicial**.",
+      "Toque em **Instalar aplicativo** para adicionar à tela inicial. Se o botão não aparecer: menu **⋮** (canto superior) → **Instalar app** ou **Adicionar à tela inicial** → confirme.",
     Icon: Smartphone,
   },
   ios: {
-    headline: "Instalar no iPhone ou iPad",
-    title: "iPhone e iPad",
-    subtitle: "Só no Safari — não no Chrome embutido nem dentro do WhatsApp",
+    headline: "Baixar o aplicativo",
+    badge: "iPhone e iPad",
+    title: "Safari (navegador da Apple)",
+    subtitle: "No iPhone não há botão de instalar como no Android — você cola o link no Safari e adiciona à tela inicial.",
     steps:
-      "**Cole o link** deste site na barra do **Safari** (ou **Abrir no Safari**). Depois: **Compartilhar** (□↑) → **Adicionar à Tela de Início** → **Adicionar**.",
+      "**Copie o link** com o botão abaixo. Abra o **Safari**, cole na barra de endereços e carregue o site. Depois toque em **Compartilhar** (□↑) → **Adicionar à Tela de Início** → **Adicionar**. Não use o Chrome embutido no WhatsApp para este passo.",
     Icon: Smartphone,
   },
   desktop: {
-    headline: "Instalar no computador",
-    title: "Windows, Mac ou Linux",
-    subtitle: "Chrome, Edge ou Brave",
+    headline: "Baixar o aplicativo",
+    badge: "Computador",
+    title: "Chrome, Edge ou Brave",
+    subtitle: "O site vira um aplicativo na área de trabalho — mesmo em Windows, Mac ou Linux.",
     steps:
-      "Use o botão **Instalar** quando aparecer, ou o ícone na barra de endereços, ou menu **⋮** → **Instalar como aplicativo**.",
+      "Use **Instalar aplicativo** quando o botão estiver disponível. Ou clique no ícone de instalar na barra de endereços (⊕), ou menu **⋮** → **Instalar Estudos da Gigi** / **Instalar como aplicativo**.",
     Icon: Monitor,
   },
 }
@@ -83,6 +96,8 @@ export function InstallHintBanner() {
   const [platform, setPlatform] = useState<Platform>("desktop")
   const [standalone, setStandalone] = useState(false)
   const [devNeedsHttps, setDevNeedsHttps] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
   const { canPromptInstall, promptInstall, installed } = usePwaInstallPrompt()
 
   useEffect(() => {
@@ -99,71 +114,133 @@ export function InstallHintBanner() {
   const dismiss = () => {
     localStorage.setItem(STORAGE_KEY, "1")
     setDismissed(true)
+    setOpen(false)
+  }
+
+  const shouldShow = ready && !dismissed && !standalone && !installed
+
+  useEffect(() => {
+    if (shouldShow) setOpen(true)
+    else setOpen(false)
+  }, [shouldShow])
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next)
+    if (!next) dismiss()
+  }
+
+  const copySiteLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      /* clipboard não disponível */
+    }
   }
 
   if (!ready || dismissed || standalone || installed) return null
 
   const hint = hints[platform]
-  const { headline, title, subtitle, steps, Icon } = hint
-  const showInstallButton = platform !== "ios" && canPromptInstall
+  const { headline, badge, title, subtitle, steps, Icon } = hint
+  const showChromeInstallButton = platform !== "ios" && canPromptInstall
 
   return (
-    <section
-      className="mx-4 mb-3 rounded-2xl border border-border bg-card p-4 card-shadow"
-      aria-label="Como instalar o aplicativo"
-    >
-      {devNeedsHttps && (
-        <p className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] leading-snug text-foreground">
-          <strong className="font-semibold">Modo dev na rede (HTTP):</strong> o Chrome não instala PWA assim. Pare o
-          servidor e rode <code className="rounded bg-background/80 px-1">npm run dev:https</code>, depois abra o{" "}
-          <strong>https://</strong>
-          com o IP do seu PC (aceite o aviso do certificado).
-        </p>
-      )}
-
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-bold text-foreground">{headline}</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            É o mesmo site no navegador — depois de instalar, abre como aplicativo.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={dismiss}
-          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          aria-label="Fechar dica de instalação"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      {showInstallButton && (
-        <button
-          type="button"
-          onClick={() => void promptInstall()}
-          className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-md transition hover:opacity-95 active:scale-[0.99]"
-        >
-          <Download className="h-4 w-4 shrink-0" aria-hidden />
-          Instalar aplicativo
-        </button>
-      )}
-
-      <div className="flex gap-3 rounded-xl border border-primary/40 bg-primary/5 p-3 ring-1 ring-primary/20">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-          <Icon className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
-            <span className="text-sm font-semibold text-foreground">{title}</span>
-            <span className="text-[10px] font-bold uppercase tracking-wide text-primary">
-              este dispositivo
-            </span>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        className={cn(
+          "max-h-[min(560px,88vh)] gap-0 overflow-y-auto rounded-2xl border-border bg-card p-0 card-shadow",
+          "w-[min(100vw-1.5rem,26rem)] sm:max-w-md",
+        )}
+      >
+        <div className="relative border-b border-border bg-primary/5 px-5 pb-4 pt-5">
+          <button
+            type="button"
+            onClick={() => handleOpenChange(false)}
+            className="absolute right-3 top-3 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+            aria-label="Fechar"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <div className="flex items-start gap-3 pr-10">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-inner">
+              <Icon className="h-6 w-6" aria-hidden />
+            </div>
+            <div className="min-w-0 pt-0.5">
+              <span className="inline-block rounded-full bg-primary/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                {badge}
+              </span>
+              <DialogTitle className="mt-2 text-left text-lg font-bold leading-tight text-foreground">
+                {headline}
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-left text-sm font-medium text-muted-foreground">
+                {title}
+              </DialogDescription>
+            </div>
           </div>
-          <p className="text-[11px] text-muted-foreground">{subtitle}</p>
-          <p className="mt-1.5 text-xs leading-relaxed text-foreground/90">{formatSteps(steps)}</p>
         </div>
-      </div>
-    </section>
+
+        <div className="space-y-4 px-5 py-4">
+          {devNeedsHttps && (
+            <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-[11px] leading-snug text-foreground">
+              <strong className="font-semibold">Modo dev na rede (HTTP):</strong> o Chrome não instala PWA assim. Rode{" "}
+              <code className="rounded bg-background/80 px-1">npm run dev:https</code> e abra o endereço com{" "}
+              <strong>https://</strong> (aceite o certificado).
+            </p>
+          )}
+
+          <p className="text-sm text-foreground/95">{subtitle}</p>
+
+          <div className="rounded-xl border border-primary/30 bg-primary/5 px-3.5 py-3 text-xs leading-relaxed text-foreground/90">
+            <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-primary">
+              Como baixar / instalar
+            </span>
+            <p>{formatSteps(steps)}</p>
+          </div>
+        </div>
+
+        <DialogFooter className="flex-col gap-2 border-t border-border bg-secondary/20 px-5 py-4 sm:flex-col">
+          {showChromeInstallButton && (
+            <button
+              type="button"
+              onClick={() => void promptInstall()}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-md transition hover:opacity-95 active:scale-[0.99]"
+            >
+              <Download className="h-4 w-4 shrink-0" aria-hidden />
+              Instalar aplicativo
+            </button>
+          )}
+
+          {platform === "ios" && (
+            <button
+              type="button"
+              onClick={() => void copySiteLink()}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-md transition hover:opacity-95 active:scale-[0.99]"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-4 w-4 shrink-0" aria-hidden />
+                  Link copiado
+                </>
+              ) : (
+                <>
+                  <Link2 className="h-4 w-4 shrink-0" aria-hidden />
+                  Copiar link do site
+                </>
+              )}
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => handleOpenChange(false)}
+            className="w-full rounded-xl border border-border bg-background py-3 text-sm font-semibold text-foreground transition hover:bg-secondary"
+          >
+            Agora não
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
