@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import db from '@/lib/db'
-import { getEstudosStatsForPeriod } from '@/lib/estudos-stats'
+import { repoGetStats } from '@/lib/repository'
 
 export const runtime = 'nodejs'
 
@@ -14,7 +13,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Parameters start and end (ISO 8601) are required' }, { status: 400 })
     }
 
-    const { items, totalMinutos } = getEstudosStatsForPeriod(db, start, end)
+    const { items, totalMinutos } = await repoGetStats(start, end)
 
     return NextResponse.json({
       items,

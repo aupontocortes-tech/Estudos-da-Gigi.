@@ -6,7 +6,7 @@ export interface MateriaStatRow {
   porcentagem: number
 }
 
-interface AggregatedRow {
+export interface AggregatedRow {
   materia: string
   total: number
 }
@@ -22,7 +22,7 @@ export function queryEstudosByPeriod(
   const stmt = db.prepare(`
     SELECT materia, SUM(tempo_min) AS total
     FROM estudos
-    WHERE data BETWEEN ? AND ?
+    WHERE data >= ? AND data <= ?
     GROUP BY materia
     HAVING SUM(tempo_min) > 0
     ORDER BY total DESC
@@ -45,15 +45,29 @@ export function processMateriaStats(rows: AggregatedRow[]): MateriaStatRow[] {
   }))
 }
 
+export function statsFromAggregateRows(rows: AggregatedRow[]): {
+  items: MateriaStatRow[]
+  totalMinutos: number
+} {
+  const normalized = rows.map((r) => ({
+    materia: r.materia,
+    total: Number(r.total),
+  }))
+  const totalMinutos = normalized.reduce((acc, r) => acc + r.total, 0)
+  if (totalMinutos <= 0) {
+    return { items: [], totalMinutos: 0 }
+  }
+  return {
+    items: processMateriaStats(normalized),
+    totalMinutos,
+  }
+}
+
 export function getEstudosStatsForPeriod(
   db: Database.Database,
   dataInicio: string,
   dataFim: string,
 ): { items: MateriaStatRow[]; totalMinutos: number } {
   const rows = queryEstudosByPeriod(db, dataInicio, dataFim)
-  const totalMinutos = rows.reduce((acc, r) => acc + r.total, 0)
-  return {
-    items: processMateriaStats(rows),
-    totalMinutos,
-  }
+  return statsFromAggregateRows(rows)
 }
