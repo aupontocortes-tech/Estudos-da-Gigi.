@@ -1,6 +1,7 @@
 import type { DbSubject, DbSession, DbNote } from '@/lib/db-types'
 import { SUBJECT_COLORS } from '@/lib/types'
-import { getEstudosStatsForPeriod, statsFromAggregateRows } from '@/lib/estudos-stats'
+import { getEstudosStatsForPeriod } from '@/lib/estudos-stats'
+import { statsFromAggregateRows } from '@/lib/materia-stats'
 import { hasPostgres, ensurePgSchema, getNeonSql } from '@/lib/pg'
 import { durationSecondsToStatMinutes } from '@/lib/session-date'
 

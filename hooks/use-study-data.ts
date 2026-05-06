@@ -1,7 +1,16 @@
 "use client"
 
 import { useState, useEffect, useCallback } from 'react'
-import type { StudyData, Subject, StudySession, Note } from '@/lib/types'
+import type { StudyData } from '@/lib/types'
+import {
+  browserLoadStudyData,
+  browserAddSubject,
+  browserDeleteSubject,
+  browserAddSession,
+  browserAddNote,
+  browserUpdateNote,
+  browserDeleteNote,
+} from '@/lib/browser-sqlite'
 
 const defaultData: StudyData = {
   subjects: [],
@@ -9,43 +18,19 @@ const defaultData: StudyData = {
   notes: [],
 }
 
-async function fetchJsonWithTimeout<T>(url: string, timeoutMs = 10000): Promise<T | null> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-
-  try {
-    const res = await fetch(url, { signal: controller.signal })
-    if (!res.ok) {
-      return null
-    }
-    return (await res.json()) as T
-  } catch (error) {
-    console.error(`Error fetching ${url}:`, error)
-    return null
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
 export function useStudyData() {
   const [data, setData] = useState<StudyData>(defaultData)
   const [isLoaded, setIsLoaded] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Carrega dados do servidor
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true)
-      const [subjects, sessions, notes] = await Promise.all([
-        fetchJsonWithTimeout<Subject[]>('/api/subjects'),
-        fetchJsonWithTimeout<StudySession[]>('/api/sessions'),
-        fetchJsonWithTimeout<Note[]>('/api/notes'),
-      ])
-      setData({
-        subjects: subjects ?? [],
-        sessions: sessions ?? [],
-        notes: notes ?? [],
-      })
+      const loaded = await browserLoadStudyData()
+      setData(loaded)
+    } catch (e) {
+      console.error('[useStudyData] Falha ao carregar SQLite local:', e)
+      setData(defaultData)
     } finally {
       setIsLoading(false)
       setIsLoaded(true)
@@ -53,26 +38,17 @@ export function useStudyData() {
   }, [])
 
   useEffect(() => {
-    loadData()
+    void loadData()
   }, [loadData])
 
   const addSubject = useCallback(async (name: string) => {
     try {
-      const res = await fetch('/api/subjects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      })
-
-      if (!res.ok) throw new Error('Failed to add subject')
-
-      const newSubject: Subject = await res.json()
-      
-      setData(prev => ({
+      const newSubject = await browserAddSubject(name)
+      if (!newSubject) return null
+      setData((prev) => ({
         ...prev,
         subjects: [...prev.subjects, newSubject],
       }))
-      
       return newSubject
     } catch (error) {
       console.error('Error adding subject:', error)
@@ -82,17 +58,12 @@ export function useStudyData() {
 
   const deleteSubject = useCallback(async (id: string) => {
     try {
-      const res = await fetch(`/api/subjects?id=${id}`, {
-        method: 'DELETE',
-      })
-
-      if (!res.ok) throw new Error('Failed to delete subject')
-
-      setData(prev => ({
+      await browserDeleteSubject(id)
+      setData((prev) => ({
         ...prev,
-        subjects: prev.subjects.filter(s => s.id !== id),
-        sessions: prev.sessions.filter(s => s.subjectId !== id),
-        notes: prev.notes.filter(n => n.subjectId !== id),
+        subjects: prev.subjects.filter((s) => s.id !== id),
+        sessions: prev.sessions.filter((s) => s.subjectId !== id),
+        notes: prev.notes.filter((n) => n.subjectId !== id),
       }))
     } catch (error) {
       console.error('Error deleting subject:', error)
@@ -101,22 +72,13 @@ export function useStudyData() {
 
   const addSession = useCallback(async (subjectId: string, duration: number) => {
     try {
-      const res = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subjectId, duration }),
-      })
+      const newSession = await browserAddSession(subjectId, duration)
+      if (!newSession) throw new Error('Subject not found')
 
-      if (!res.ok) throw new Error('Failed to add session')
-
-      const newSession: StudySession = await res.json()
-
-      setData(prev => ({
+      setData((prev) => ({
         ...prev,
-        subjects: prev.subjects.map(s => 
-          s.id === subjectId 
-            ? { ...s, totalTime: s.totalTime + duration }
-            : s
+        subjects: prev.subjects.map((s) =>
+          s.id === subjectId ? { ...s, totalTime: s.totalTime + duration } : s,
         ),
         sessions: [newSession, ...prev.sessions],
       }))
@@ -127,17 +89,10 @@ export function useStudyData() {
 
   const addNote = useCallback(async (subjectId: string, title: string, content: string) => {
     try {
-      const res = await fetch('/api/notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subjectId, title, content }),
-      })
+      const newNote = await browserAddNote(subjectId, title, content)
+      if (!newNote) throw new Error('Subject not found')
 
-      if (!res.ok) throw new Error('Failed to add note')
-
-      const newNote: Note = await res.json()
-
-      setData(prev => ({
+      setData((prev) => ({
         ...prev,
         notes: [newNote, ...prev.notes],
       }))
@@ -148,22 +103,12 @@ export function useStudyData() {
 
   const updateNote = useCallback(async (id: string, title: string, content: string) => {
     try {
-      const res = await fetch('/api/notes', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, title, content }),
-      })
+      const { updatedAt } = await browserUpdateNote(id, title, content)
 
-      if (!res.ok) throw new Error('Failed to update note')
-
-      const { updatedAt } = await res.json()
-
-      setData(prev => ({
+      setData((prev) => ({
         ...prev,
-        notes: prev.notes.map(n => 
-          n.id === id 
-            ? { ...n, title, content, updatedAt }
-            : n
+        notes: prev.notes.map((n) =>
+          n.id === id ? { ...n, title, content, updatedAt } : n,
         ),
       }))
     } catch (error) {
@@ -173,15 +118,11 @@ export function useStudyData() {
 
   const deleteNote = useCallback(async (id: string) => {
     try {
-      const res = await fetch(`/api/notes?id=${id}`, {
-        method: 'DELETE',
-      })
+      await browserDeleteNote(id)
 
-      if (!res.ok) throw new Error('Failed to delete note')
-
-      setData(prev => ({
+      setData((prev) => ({
         ...prev,
-        notes: prev.notes.filter(n => n.id !== id),
+        notes: prev.notes.filter((n) => n.id !== id),
       }))
     } catch (error) {
       console.error('Error deleting note:', error)

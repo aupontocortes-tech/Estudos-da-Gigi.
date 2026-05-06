@@ -4,7 +4,8 @@ import { useCallback, useEffect, useId, useState } from 'react'
 import type { Subject } from '@/lib/types'
 import { SUBJECT_COLORS } from '@/lib/types'
 import { getPeriodRange, type PeriodPreset } from '@/lib/stats-period'
-import type { MateriaStatRow } from '@/lib/estudos-stats'
+import type { MateriaStatRow } from '@/lib/materia-stats'
+import { browserGetStats } from '@/lib/browser-sqlite'
 import {
   Select,
   SelectContent,
@@ -70,13 +71,9 @@ export function PieChart({ subjects, statsRefreshKey = 0 }: PieChartProps) {
     const { startIso, endIso } = getPeriodRange(preset, customStart, customEnd)
     setLoading(true)
     try {
-      const res = await fetch(
-        `/api/stats?start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}`,
-      )
-      if (!res.ok) throw new Error('stats fetch failed')
-      const data = await res.json()
-      setItems(data.items ?? [])
-      setTotalMinutos(typeof data.totalMinutos === 'number' ? data.totalMinutos : 0)
+      const { items: rows, totalMinutos: total } = await browserGetStats(startIso, endIso)
+      setItems(rows ?? [])
+      setTotalMinutos(typeof total === 'number' ? total : 0)
     } catch (e) {
       console.error(e)
       setItems([])
