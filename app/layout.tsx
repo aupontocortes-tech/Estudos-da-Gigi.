@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Nunito, Quicksand } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import Script from 'next/script'
 import './globals.css'
 import { ServiceWorkerRegister } from '@/components/service-worker-register'
 
@@ -51,6 +52,20 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className="bg-background">
       <body className={`${nunito.variable} ${quicksand.variable} font-sans antialiased`}>
+        <Script id="eg-pwa-install-capture" strategy="beforeInteractive">
+          {`
+try {
+  window.__EG_PWA_DEFERRED_PROMPT = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    window.__EG_PWA_DEFERRED_PROMPT = e;
+  });
+  window.addEventListener('appinstalled', function () {
+    window.__EG_PWA_DEFERRED_PROMPT = null;
+  });
+} catch (_) {}
+          `.trim()}
+        </Script>
         <ServiceWorkerRegister />
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}

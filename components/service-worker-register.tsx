@@ -1,17 +1,19 @@
 'use client'
 
 import { useEffect } from 'react'
+import { isLoopbackHost, isPrivateLanHost, normalizeHostname } from '@/lib/pwa-env'
 
 function shouldRegisterServiceWorker(): boolean {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return false
-  const { hostname } = window.location
-  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
-  if (!window.isSecureContext && !isLocal) return false
-  // Produção (Vercel) ou localhost: necessário para PWA / beforeinstallprompt no Chrome
-  return process.env.NODE_ENV === 'production' || isLocal
+  const host = normalizeHostname(window.location.hostname)
+  const loopback = isLoopbackHost(host)
+  // HTTP em IP da rede não é contexto seguro: Chrome não registra SW (use npm run dev:https).
+  if (!window.isSecureContext && !loopback) return false
+  if (process.env.NODE_ENV === 'production') return true
+  return loopback || isPrivateLanHost(host)
 }
 
-/** Registra /sw.js — obrigatório para o Chrome Android tratar o site como PWA instalável. */
+/** Registra /sw.js — obrigatório para PWA / beforeinstallprompt no Chrome. */
 export function ServiceWorkerRegister() {
   useEffect(() => {
     if (!shouldRegisterServiceWorker()) return

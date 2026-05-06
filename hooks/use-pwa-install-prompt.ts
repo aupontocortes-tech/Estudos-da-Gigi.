@@ -8,11 +8,24 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
+declare global {
+  interface Window {
+    /** Preenchido por script inline no layout antes da hidratação. */
+    __EG_PWA_DEFERRED_PROMPT?: BeforeInstallPromptEvent | null
+  }
+}
+
 export function usePwaInstallPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null)
   const [installed, setInstalled] = useState(false)
 
   useEffect(() => {
+    const queued = typeof window !== 'undefined' ? window.__EG_PWA_DEFERRED_PROMPT : null
+    if (queued) {
+      setDeferred(queued)
+      window.__EG_PWA_DEFERRED_PROMPT = null
+    }
+
     const onPrompt = (e: Event) => {
       e.preventDefault()
       setDeferred(e as BeforeInstallPromptEvent)
@@ -20,6 +33,7 @@ export function usePwaInstallPrompt() {
     const onInstalled = () => {
       setInstalled(true)
       setDeferred(null)
+      if (typeof window !== 'undefined') window.__EG_PWA_DEFERRED_PROMPT = null
     }
     window.addEventListener('beforeinstallprompt', onPrompt)
     window.addEventListener('appinstalled', onInstalled)

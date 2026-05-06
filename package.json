@@ -8,7 +8,10 @@
     ]
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev-open.mjs",
+    "dev:plain": "next dev --webpack",
+    "dev:lan": "next dev --webpack -H 0.0.0.0",
+    "dev:https": "next dev --webpack --experimental-https -H 0.0.0.0",
     "generate:pwa-icons": "node scripts/generate-pwa-icons.mjs",
     "build": "next build --webpack",
     "start": "next start",

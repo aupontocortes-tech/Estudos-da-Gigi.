@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { X, Monitor, Smartphone, Download } from "lucide-react"
 import { usePwaInstallPrompt } from "@/hooks/use-pwa-install-prompt"
+import { isPrivateLanHost, normalizeHostname } from "@/lib/pwa-env"
 
 const STORAGE_KEY = "estudos-gigi-install-hint-dismissed"
 
@@ -81,12 +82,17 @@ export function InstallHintBanner() {
   const [dismissed, setDismissed] = useState(false)
   const [platform, setPlatform] = useState<Platform>("desktop")
   const [standalone, setStandalone] = useState(false)
+  const [devNeedsHttps, setDevNeedsHttps] = useState(false)
   const { canPromptInstall, promptInstall, installed } = usePwaInstallPrompt()
 
   useEffect(() => {
     setPlatform(detectPlatform())
     setStandalone(isStandaloneDisplay())
     setDismissed(localStorage.getItem(STORAGE_KEY) === "1")
+    if (process.env.NODE_ENV === "development") {
+      const h = normalizeHostname(window.location.hostname)
+      if (!window.isSecureContext && isPrivateLanHost(h)) setDevNeedsHttps(true)
+    }
     setReady(true)
   }, [])
 
@@ -106,6 +112,15 @@ export function InstallHintBanner() {
       className="mx-4 mb-3 rounded-2xl border border-border bg-card p-4 card-shadow"
       aria-label="Como instalar o aplicativo"
     >
+      {devNeedsHttps && (
+        <p className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] leading-snug text-foreground">
+          <strong className="font-semibold">Modo dev na rede (HTTP):</strong> o Chrome não instala PWA assim. Pare o
+          servidor e rode <code className="rounded bg-background/80 px-1">npm run dev:https</code>, depois abra o{" "}
+          <strong>https://</strong>
+          com o IP do seu PC (aceite o aviso do certificado).
+        </p>
+      )}
+
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <h2 className="text-sm font-bold text-foreground">{headline}</h2>
