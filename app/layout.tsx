@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Nunito, Quicksand } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
+import { ServiceWorkerRegister } from '@/components/service-worker-register'
 
 const nunito = Nunito({ 
   subsets: ["latin"],
@@ -60,6 +61,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className="bg-background">
       <body className={`${nunito.variable} ${quicksand.variable} font-sans antialiased`}>
+        <ServiceWorkerRegister />
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
